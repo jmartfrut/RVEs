@@ -1,0 +1,17 @@
+name = "MimosaRVEs"
+uuid = "1c830c4e-91c4-4b43-9943-9e359d57f5e1"
+authors = ["MultiSimo_Group"]
+version = "1.0.0-DEV"
+
+[deps]
+Gmsh = "705231aa-382f-11e9-3f0c-b7cb4346fdeb"
+Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
+
+[compat]
+julia = "1.10"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
