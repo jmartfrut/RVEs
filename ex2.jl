@@ -1,15 +1,4 @@
-module MimosaRVE
-
 using Gmsh: Gmsh, gmsh
-
-export RVE
-export Sphere
-export Cylinder
-export createGmshModel
-export closeGmshModel
-export visualizeMesh
-export createMesh!
-export saveMesh
 
 abstract type Inclusion end
 
@@ -46,13 +35,13 @@ function _addInclusion!(model::Module, inc::Inclusion)
 end
 
 function _addBoundingBox!(model::Module, rve::RVE)
-    xmin, ymin, zmin, xmax, ymax, zmax = _getBoundingBox(rve::RVE)
+    xmin, ymin, zmin, xmax, ymax, zmax = getBoundingBox(rve::RVE)
     model.occ.addBox(xmin, ymin, zmin, xmax, ymax, zmax, 1)
     model.occ.synchronize()
 end
 
 function _isinboundary(rve::RVE, b::NTuple{6,Float64})
-    xmin, ymin, zmin, xmax, ymax, zmax = _getBoundingBox(rve)
+    xmin, ymin, zmin, xmax, ymax, zmax = getBoundingBox(rve)
     out = false
     location = [0, 0, 0, 0, 0, 0]
     if b[1] <= xmin
@@ -121,8 +110,46 @@ function _addPeriodicInclusions!(model::Module, rve::RVE, _tags::Vector{Tuple{In
     return _tags
 end
 
+function createGmshModel(rve::RVE, inclusions::Tuple, namedModel::String)
+    gmsh.initialize()
+    gmsh.model.add(namedModel)
+    xmin, ymin, zmin, xmax, ymax, zmax = getBoundingBox(rve)
+    _addBoundingBox!(gmsh.model, rve)
+    dim3::Int32 = 3
+    numinc = length(inclusions)
+    _tags::Array{Tuple{Int32,Int32},1} = []
+    for i in 1:1
+        tag = _addInclusion!(gmsh.model, inclusions[i])
+        gmsh.model.occ.synchronize()
+        inc_boundingbox = gmsh.model.getBoundingBox(dim3, tag)
+        isinboundary = _isinboundary(rve, inc_boundingbox)
+        _tags = vcat(_tags, [(dim3, tag)])
+        if isinboundary
+            println("Inclusion $i is in the boundary!")
+            _tags = _addPeriodicInclusions!(gmsh.model, rve, _tags)
+        end
+    end
 
-function _getBoundingBox(rve::RVE)
+    out, _ = gmsh.model.occ.fragment([(3, 1)], _tags)
+    gmsh.model.occ.synchronize()
+
+
+    gmsh.option.setNumber("Geometry.OCCBoundsUseStl", 1)
+    eps = 1e-3
+    # We then retrieve all the volumes in the bounding box of the original cube,
+    # and delete all the parts outside it:
+    vin = gmsh.model.getEntitiesInBoundingBox(xmin - eps, ymin - eps, zmin - eps, xmax + eps, ymax + eps, zmax + eps, 3)
+    for v in vin
+        deleteat!(out, findall(x -> x == v, out))
+    end
+    # Delete outside parts recursively
+    gmsh.model.removeEntities(out, true)
+
+
+    return gmsh.model
+end
+
+function getBoundingBox(rve::RVE)
     xmin = rve.origin[1]
     ymin = rve.origin[2]
     zmin = rve.origin[3]
@@ -132,41 +159,48 @@ function _getBoundingBox(rve::RVE)
     return [xmin, ymin, zmin, xmax, ymax, zmax]
 end
 
-function createMesh!(model::Module, rve::RVE, inclusions::Tuple, out_::Vector{Any})
-    box = _getBoundingBox(rve)
+function createMesh!(model::Module, rve::RVE, inclusions::Tuple,  out_::Vector{Any} )
+    box = getBoundingBox(rve)
     eps = 1e-3
+    # vin = model.getEntitiesInBoundingBox(box[1] - eps, box[2] - eps, box[3] - eps,
+    #     box[4] + eps, box[5] + eps, box[6] + eps, 3)
+    # p = model.getBoundary(vin, false, false, true)  # Get all points
+    # model.mesh.setSize(p, meshsize)
+    # p = model.getEntitiesInBoundingBox(box[1] - eps, box[2] - eps, box[3] - eps, box[1] + eps, box[2] + eps, box[3] + eps, 0)
+    # model.mesh.setSize(p, 0.001)
 
-    incu = 1
-    taginc = model.getEntitiesForPhysicalGroup(3, incu)
-    model.mesh.field.add("MathEval", 1)
-    model.mesh.field.setString(1, "F",
-        "$(rve.meshsize)")
-    model.mesh.field.add("Restrict", 2)
-    model.mesh.field.setNumber(2, "InField", 1)
-    model.mesh.field.setNumbers(2, "VolumesList", vcat(taginc...))
+ # mesh matrix
+incu = 1
+taginc = model.getEntitiesForPhysicalGroup(3, incu)
+model.mesh.field.add("MathEval", 1)
+model.mesh.field.setString(1, "F",
+    "$(rve.meshsize)")
+model.mesh.field.add("Restrict", 2)
+model.mesh.field.setNumber(2, "InField", 1)
+model.mesh.field.setNumbers(2, "VolumesList", vcat(taginc...))
 
-    numfield = 2
-    for i in 1:length(out_)-1
-        taginc = model.getEntitiesForPhysicalGroup(3, i + 2)
+numfield = 2
+for i in 1:length(out_)-1
+        taginc = model.getEntitiesForPhysicalGroup(3,  i+2)
         numfield += 1
         model.mesh.field.add("MathEval", numfield)
         model.mesh.field.setString(numfield, "F",
-            "$(inclusions[i].meshsize)")
+        "$(inclusions[i].meshsize)")
         numfield += 1
         model.mesh.field.add("Restrict", numfield)
         model.mesh.field.setNumber(numfield, "InField", numfield - 1)
         model.mesh.field.setNumbers(numfield, "VolumesList", vcat(taginc...))
-    end
+end
 
-    numfield += 1
-    model.mesh.field.add("Min", numfield)
-    model.mesh.field.setNumbers(numfield, "FieldsList", collect(2:2:numfield-1))
-    model.mesh.field.setAsBackgroundMesh(numfield)
+numfield += 1
+model.mesh.field.add("Min", numfield)
+model.mesh.field.setNumbers(numfield, "FieldsList", collect(2:2:numfield-1))
+model.mesh.field.setAsBackgroundMesh(numfield)
 
 
-    gmsh.option.setNumber("Mesh.MeshSizeExtendFromBoundary", 0)
-    gmsh.option.setNumber("Mesh.MeshSizeFromPoints", 0)
-    gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 0)
+gmsh.option.setNumber("Mesh.MeshSizeExtendFromBoundary", 0)
+gmsh.option.setNumber("Mesh.MeshSizeFromPoints", 0)
+gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 0)
 
 
 
@@ -275,8 +309,9 @@ function saveMesh(model::Module, output_file::String)
 end
 
 
+
 function _addPhysicalGroups!(model::Module, out_::Vector{Any}, rve::RVE)
-    xmin, ymin, zmin, xmax, ymax, zmax = _getBoundingBox(rve)
+    xmin, ymin, zmin, xmax, ymax, zmax = getBoundingBox(rve)
     eps = 1e-3
 
     allinc = vcat(out_[1:end-1]...)
@@ -356,67 +391,94 @@ end
 
 
 
-function createGmshModel(rve::RVE, inclusions::Tuple)
-
-    gmsh.initialize()
-    gmsh.model.add("test")
-    xmin, ymin, zmin, xmax, ymax, zmax = _getBoundingBox(rve)
-    _addBoundingBox!(gmsh.model, rve)
-    dim3::Int32 = 3
-    numinc = length(inclusions)
-    _tags = Vector{Vector{Tuple{Int32,Int32}}}()
-    push!(_tags, [(3, 1)])
-
-    _numinc = zeros(Int32, numinc)
-    for i in 1:numinc
-        tag = _addInclusion!(gmsh.model, inclusions[i])
-        inc_boundingbox = gmsh.model.occ.getBoundingBox(dim3, tag)
-        isinboundary, boundarytype = _isinboundary(rve, inc_boundingbox)
-        if isinboundary
-            println("Inclusion $i is in the boundary!")
-            __tags = _addPeriodicInclusions!(gmsh.model, rve, [(dim3, tag)], boundarytype)
-            _numinc[i] = length(__tags)
-            push!(_tags, __tags)
-        else
-            push!(_tags, [(dim3, tag)])
-            _numinc[i] = 1
-        end
-    end
-
-    out_ = []
-    _, out__ = gmsh.model.occ.fragment(_tags[1], vcat(_tags[2]...))
-    push!(out_, out__[1][2:end])
-    for i in 2:numinc
-        _, out__ = gmsh.model.occ.fragment(out__[1][1], vcat(_tags[i+1]...))
-        push!(out_, out__[1][2:end])
-    end
-    push!(out_, out__[1][1])
-
-    gmsh.model.occ.synchronize()
-    removol = gmsh.model.getEntities(3)
-
+function _removeEntities!(model::Module, rve::RVE, out::Array{Tuple{Int32,Int32},1}, recursive::Bool)
+    xmin, ymin, zmin, xmax, ymax, zmax = getBoundingBox(rve)
     gmsh.option.setNumber("Geometry.OCCBoundsUseStl", 1)
     eps = 1e-3
-    vin = gmsh.model.getEntitiesInBoundingBox(xmin - eps, ymin - eps, zmin - eps, xmax + eps, ymax + eps, zmax + eps, 3)
+    vin = model.getEntitiesInBoundingBox(xmin - eps, ymin - eps, zmin - eps, xmax + eps, ymax + eps, zmax + eps, 3)
     for v in vin
-        deleteat!(removol, findall(x -> x == v, removol))
+        deleteat!(out, findall(x -> x == v, out))
     end
-    gmsh.model.removeEntities(removol, true)
-
-    _addPhysicalGroups!(gmsh.model, out_, rve)
-
-    return gmsh.model, out_
-end
-
-
-
-
-
-
-
-
-
-
-
+    # Delete outside parts recursively
+    model.removeEntities(out, recursive)
+    model.occ.synchronize()
+    visualizeMesh()
 
 end
+
+
+
+
+
+
+rve = RVE([2, 2, 2], [1.0, 1.0, 1.0], [1, 1, 1], [0.0, 0.0, 0.0], 0.1)
+inclusions = (Sphere([1.0, 1.0, 0.5], 0.25, 0.01), Sphere([0.5, 0.5, 1.0], 0.25, 0.05), Sphere([0.5, 0.5, 0.5], 0.2, 0.03))
+# inclusions = (Sphere([1.0, 1.0, 0.5], 0.25, 0.1), Cylinder([0.5, 0.5, 0.1], [0.0, 0.0, 0.9], 0.25, 0.1))
+
+
+
+
+gmsh.initialize()
+gmsh.model.add("test")
+xmin, ymin, zmin, xmax, ymax, zmax = getBoundingBox(rve)
+_addBoundingBox!(gmsh.model, rve)
+dim3::Int32 = 3
+numinc = length(inclusions)
+_tags = Vector{Vector{Tuple{Int32,Int32}}}()
+push!(_tags, [(3, 1)])
+
+_numinc = zeros(Int32, numinc)
+for i in 1:numinc
+    tag = _addInclusion!(gmsh.model, inclusions[i])
+    # gmsh.model.occ.synchronize()
+    inc_boundingbox = gmsh.model.occ.getBoundingBox(dim3, tag)
+    isinboundary, boundarytype = _isinboundary(rve, inc_boundingbox)
+    if isinboundary
+        println("Inclusion $i is in the boundary!")
+        __tags = _addPeriodicInclusions!(gmsh.model, rve, [(dim3, tag)], boundarytype)
+        _numinc[i] = length(__tags)
+        push!(_tags, __tags)
+    else
+        push!(_tags, [(dim3, tag)])
+        _numinc[i] = 1
+    end
+end
+
+out_ = []
+_, out__ = gmsh.model.occ.fragment(_tags[1], vcat(_tags[2]...))
+push!(out_, out__[1][2:end])
+for i in 2:numinc
+    _, out__ = gmsh.model.occ.fragment(out__[1][1], vcat(_tags[i+1]...))
+    push!(out_, out__[1][2:end])
+end
+push!(out_, out__[1][1])
+out = vcat(out_...)
+
+gmsh.model.occ.synchronize()
+removol = gmsh.model.getEntities(3)
+
+gmsh.option.setNumber("Geometry.OCCBoundsUseStl", 1)
+eps = 1e-3
+vin = gmsh.model.getEntitiesInBoundingBox(xmin - eps, ymin - eps, zmin - eps, xmax + eps, ymax + eps, zmax + eps, 3)
+for v in vin
+    deleteat!(removol, findall(x -> x == v, removol))
+end
+gmsh.model.removeEntities(removol, true)
+
+_addPhysicalGroups!(gmsh.model, out_, rve)
+  
+createMesh!(gmsh.model, rve, inclusions,  out_ )
+
+visualizeMesh()
+
+
+
+ 
+
+
+
+
+
+
+ 
+
