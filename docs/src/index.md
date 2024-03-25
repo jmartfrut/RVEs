@@ -1,14 +1,14 @@
 ```@meta
-CurrentModule = MimosaRVEs
+CurrentModule = RVEs
 ```
 
-# MimosaRVEs
+# RVEs
 
-Documentation for [MimosaRVEs](https://github.com/jmartfrut/MimosaRVEs.jl).
+Documentation for [RVEs](https://github.com/jmartfrut/RVEs.jl).
 
 ```@index
 ```
 
 ```@autodocs
-Modules = [MimosaRVEs]
+Modules = [RVEs]
 ```
