@@ -17,7 +17,6 @@ Project funded by:
 
 
  <p align="center"> 
-<img alt="Light" src="https://github.com/jmartfrut/Mimosa/blob/main/docs/imgs/seneca.png" width="35%">
 &nbsp; &nbsp; &nbsp; &nbsp;
 <img alt="Dark"
 src="https://github.com/jmartfrut/Mimosa/blob/main/docs/imgs/aei.png" width="45%">
