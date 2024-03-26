@@ -22,6 +22,7 @@ The RVEs package serves as a versatile tool for mesh generation, leveraging the 
 **Current Focus and Future Expansion:**
 At present, RVEs excels in automating the generation of representative volume elements containing multiple inclusion objects. However, its capabilities can be extended by adding support for additional geometric shapes and model types. It's essential to clarify that RVEs does not aim to replace the Gmsh scripting language. Instead, it acts as a facilitator, simplifying the automation of complex meshing tasks within a user-friendly programming environment such as Julia.
 
+# MiniApps included  
 
  <p align="center"> 
 &nbsp; &nbsp; &nbsp; &nbsp;
@@ -29,7 +30,6 @@ At present, RVEs excels in automating the generation of representative volume el
 src="https://github.com/jmartfrut/RVEs/blob/main/docs/imgs/examples_.png" width="100%">
 </p>
 
-# MiniApps included  
 
 
 
@@ -73,7 +73,7 @@ stopGmsh()
  L=0.38
  geo6=Box([L, L, L], [0.5-L/2, 0.5-L/2, 0.5-L/2], 2)
  geo7=Intersect(geo5,geo6,2)
- 
+
  geo8=Cut(geo7,geo4,2)
  myInclusions=(geo8,)
   
