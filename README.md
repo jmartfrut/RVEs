@@ -30,6 +30,33 @@ src="https://github.com/jmartfrut/RVEs/blob/main/docs/imgs/examples.png" width="
 
 # MiniApps included  
 
+
+
+
+
+# Quick start
+
+```julia
+startGmsh()
+
+myRVE = RVE( [1.0, 1.0, 1.0], [1,1,1], [0.0, 0.0, 0.0], 0.1)
+
+myInclusions = (Sphere([0.0, 0.5, 0.5], 0.25, 2),
+Sphere([0.5, 0.0, 0.5], 0.25, 2),
+Sphere([0.5, 0.5, 0.0], 0.25, 2),
+Sphere([1.0, 1.0, 1.0], 0.25, 2))
+
+model, tagvol=createGmshModel(myRVE,myInclusions,"RVE")
+
+createMesh!(model,myRVE,myInclusions,tagvol)
+
+output_file = joinpath(dirname(@__FILE__), "RVE.msh")
+saveMesh(output_file)
+
+stopGmsh()
+```
+
+
 Project funded by:
 
 - Grant PID2022-141957OA-C22 funded by MCIU/AEI/ 10.13039/501100011033  and by ''ERDF A way of making Europe''
