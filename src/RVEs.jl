@@ -6,6 +6,10 @@ export RVE
 export Sphere
 export Cylinder
 export Ellipsoid
+export Box
+export Fuse
+export Cut
+export Intersect 
 export createGmshModel
 export stopGmsh
 export startGmsh
@@ -21,6 +25,12 @@ struct RVE
     periodicityFlags::Vector{Int64}       # periodicity flags
     origin::Vector{Float64}     # set cell origin to [0,0,0]
     meshsize::Float64
+end
+
+struct Box <: Inclusion
+    size::Vector{Float64}    # size of the RVE
+    origin::Vector{Float64}     # set cell origin to [0,0,0]
+    refinementwidth::Int32
 end
 
 struct Sphere <: Inclusion
@@ -43,6 +53,53 @@ struct Ellipsoid <: Inclusion
     refinementwidth::Int32
 end
 
+
+struct Fuse <: Inclusion
+    inclusions::Vector{Inclusion}
+    refinementwidth::Int32
+end
+
+struct Cut <: Inclusion
+    object::Inclusion
+    tool::Inclusion
+    refinementwidth::Int32
+end
+
+struct Intersect <: Inclusion
+    object::Inclusion
+    tool::Inclusion
+    refinementwidth::Int32
+end
+
+
+function _addInclusion!(model::Module, inc::Fuse)
+    tag1_= _addInclusion!(model, inc.inclusions[1])
+    for i in inc.inclusions[2:end]
+    tag2_= _addInclusion!(model, i)
+    model.occ.fuse((3, tag1_), (3, tag2_), -1)
+    end
+    return tag1_
+end
+
+function _addInclusion!(model::Module, inc::Cut)
+    tag1_= _addInclusion!(model, inc.object)
+    tag2_= _addInclusion!(model, inc.tool)
+    model.occ.cut((3, tag1_), (3, tag2_), -1)
+    return tag1_
+end
+
+function _addInclusion!(model::Module, inc::Intersect)
+    tag1_= _addInclusion!(model, inc.object)
+    tag2_= _addInclusion!(model, inc.tool)
+    model.occ.intersect((3, tag1_), (3, tag2_), -1)
+    return tag1_
+end
+
+function _addInclusion!(model::Module, inc::Box)
+    tag =  model.occ.addBox(inc.origin[1], inc.origin[2], inc.origin[3], inc.size[1], inc.size[2], inc.size[3], -1)
+return tag
+end
+
 function _addInclusion!(model::Module, inc::Sphere)
          tag = model.occ.addSphere(inc.origin[1], inc.origin[2], inc.origin[3], inc.radius, -1)
     return tag
@@ -61,9 +118,9 @@ function _addInclusion!(model::Module, inc::Ellipsoid)
     return tag
 end
 
+
 function _addBoundingBox!(model::Module, rve::RVE)
-    xmin, ymin, zmin, xmax, ymax, zmax = _getBoundingBox(rve::RVE)
-    model.occ.addBox(xmin, ymin, zmin, xmax, ymax, zmax, 1)
+    model.occ.addBox(rve.origin[1], rve.origin[2], rve.origin[3], rve.size[1], rve.size[2], rve.size[3], 1)
     model.occ.synchronize()
 end
 
@@ -160,6 +217,32 @@ function _getlc(inc::Ellipsoid)
     return minimum(inc.radius)
 end
 
+function _getlc(inc::Box)
+    return minimum(inc.size)
+end
+
+
+
+function _getlc(inc::Fuse)
+    radius  = zeros(Float64, length(inc.inclusions))
+    for i in 1:length(inc.inclusions)
+        radius[i] = _getlc(inc.inclusions[i])
+    end
+    return minimum(radius)
+end
+
+function _getlc(inc::Cut)
+        radius1 = _getlc(inc.object)
+        radius2 = _getlc(inc.tool)
+    return minimum([radius1, radius2])
+end
+
+
+function _getlc(inc::Intersect)
+    radius1 = _getlc(inc.object)
+    radius2 = _getlc(inc.tool)
+return minimum([radius1, radius2])
+end
 
 
 

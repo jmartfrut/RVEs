@@ -5,38 +5,46 @@ include("files.jl")
 startGmsh()
 ShowInfo(1)
 rve = RVE( [1.0, 1.0, 1.0], [1,1,1], [0.0, 0.0, 0.0], 0.1)
- numfib=[8,8] # y, z
- step = rve.size[2:3]/(numfib[1]-1)
- gamma = 0.1*step
- radius = minimum((step/2.0)-gamma)
+ 
+# inc1=Cylinder([-0.1, 0.5, 0.5],[2.0,0.0,0.0], 0.1, 2)
+# inc2=Sphere([0.5, 0.5, 0.5], 0.25, 2)
+# inc3=Cylinder([0.5, -0.1, 0.5],[0.0,2.0,0.0], 0.1, 2)
+# inc4=Cylinder([0.5, 0.5,-0.1],[0.0,0.0,2.0], 0.1, 2)
 
- myInclusions=[]
-for iz in 1:numfib[2]
-  for iy in 1:numfib[1]
-    z = (iz-1)*step[2]
-    y = (iy-1)*step[1]
-    push!(myInclusions, Cylinder([-0.1, y, z],[2.0,0.0,0.0], radius, 2))
-  end
-end
+# # inclusions=(Union([inc1,inc2,inc3, inc4],2),)
+# inclusions=(Intersection(inc1,inc2,2),)
 
-inclusions=tuple(myInclusions...)
-# rve = RVE( [1.0, 1.0, 1.0], [1,1,1], [0.0, 0.0, 0.0], 0.1)
-# inclusions = (Sphere([0.0, 0.5, 0.5], 0.25, 2),
-# Sphere([0.5, 0.0, 0.5], 0.25, 2),
-# Sphere([0.5, 0.5, 0.0], 0.25, 2),
-# Sphere([1.0, 1.0, 1.0], 0.25, 2))
+geo1=Cylinder([-0.1, 0.5, 0.5],[2.0,0.0,0.0], 0.1, 2)
+geo2=Cylinder([0.5, -0.1, 0.5],[0.0,2.0,0.0], 0.1, 2)
+geo3=Cylinder([0.5, 0.5,-0.1],[0.0,0.0,2.0], 0.1, 2)
+geo4=Union([geo1,geo2,geo3],2)
 
+geo5=Sphere([0.5, 0.5, 0.5], 0.25, 2)
+L=0.38
+geo6=Box([L, L, L], [0.5-L/2, 0.5-L/2, 0.5-L/2], 2)
+
+geo7=Intersection(geo5,geo6,2)
+geo8=Cut(geo7,geo4,2)
+
+inclusions=(geo8,)
+
+
+
+  
 
 
     gmsh.model.add("test")
     xmin, ymin, zmin, xmax, ymax, zmax = _getBoundingBox(rve)
     _addBoundingBox!(gmsh.model, rve)
+
     dim3::Int32 = 3
     numinc = length(inclusions)
     _tags = Vector{Vector{Tuple{Int32,Int32}}}()
     push!(_tags, [(3, 1)])
 
     _numinc = zeros(Int32, numinc)
+ 
+ 
     for i in 1:numinc
         tag = _addInclusion!(gmsh.model, inclusions[i])
         inc_boundingbox = gmsh.model.occ.getBoundingBox(dim3, tag)

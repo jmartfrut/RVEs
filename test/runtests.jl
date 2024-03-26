@@ -133,3 +133,29 @@ myInclusions=tuple(myInclusions_...)
   saveMesh(output_file)
   stopGmsh()
   end
+
+
+
+@testset "Test8: Inclusion from bolean operations" begin
+  startGmsh()
+  ShowInfo(0)
+ myRVE = RVE( [1.0, 1.0, 1.0], [1,1,1], [0.0, 0.0, 0.0], 0.1)
+ geo1=Cylinder([-0.1, 0.5, 0.5],[2.0,0.0,0.0], 0.1, 2)
+ geo2=Cylinder([0.5, -0.1, 0.5],[0.0,2.0,0.0], 0.1, 2)
+ geo3=Cylinder([0.5, 0.5,-0.1],[0.0,0.0,2.0], 0.1, 2)
+ geo4=Fuse([geo1,geo2,geo3],2)
+ geo5=Sphere([0.5, 0.5, 0.5], 0.25, 2)
+ L=0.38
+ geo6=Box([L, L, L], [0.5-L/2, 0.5-L/2, 0.5-L/2], 2)
+ geo7=Intersect(geo5,geo6,2)
+ geo8=Cut(geo7,geo4,2)
+ myInclusions=(geo8,)
+  model, tagvol=createGmshModel(myRVE,myInclusions,"Test8")
+  createMesh!(model,myRVE,myInclusions,tagvol)
+  _, nodeCoords, _ = model.mesh.getNodes()
+   @test div(length(nodeCoords),3)==4686
+   @test nodeCoords[2435]==0.3215734631563863
+  output_file = joinpath(dirname(@__FILE__), "Test8.msh")
+  saveMesh(output_file)
+  stopGmsh()
+  end
