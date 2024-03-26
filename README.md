@@ -27,7 +27,7 @@ At present, RVEs excels in automating the generation of representative volume el
  <p align="center"> 
 &nbsp; &nbsp; &nbsp; &nbsp;
 <img alt="Dark"
-src="https://github.com/jmartfrut/RVEs/blob/main/docs/imgs/examples_.png" width="100%">
+src="https://github.com/jmartfrut/RVEs/blob/main/docs/imgs/rves.png" width="100%">
 </p>
 
 

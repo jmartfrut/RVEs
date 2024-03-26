@@ -35,7 +35,7 @@ struct Ellipsoid <: Inclusion
 end
 
 
-struct Union <: Inclusion
+struct Fuse <: Inclusion
     inclusions::Vector{Inclusion}
     refinementwidth::Int32
 end
@@ -53,7 +53,7 @@ struct Intersection <: Inclusion
 end
 
 
-function _addInclusion!(model::Module, inc::Union)
+function _addInclusion!(model::Module, inc::Fuse)
     tag1_= _addInclusion!(model, inc.inclusions[1])
     for i in inc.inclusions[2:end]
     tag2_= _addInclusion!(model, i)
@@ -204,7 +204,7 @@ end
 
 
 
-function _getlc(inc::Union)
+function _getlc(inc::Fuse)
     radius  = zeros(Float64, length(inc.inclusions))
     for i in 1:length(inc.inclusions)
         radius[i] = _getlc(inc.inclusions[i])

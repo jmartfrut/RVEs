@@ -4,31 +4,41 @@ include("files.jl")
 
 startGmsh()
 ShowInfo(1)
-rve = RVE( [1.0, 1.0, 1.0], [1,1,1], [0.0, 0.0, 0.0], 0.1)
  
-# inc1=Cylinder([-0.1, 0.5, 0.5],[2.0,0.0,0.0], 0.1, 2)
-# inc2=Sphere([0.5, 0.5, 0.5], 0.25, 2)
-# inc3=Cylinder([0.5, -0.1, 0.5],[0.0,2.0,0.0], 0.1, 2)
-# inc4=Cylinder([0.5, 0.5,-0.1],[0.0,0.0,2.0], 0.1, 2)
 
-# # inclusions=(Union([inc1,inc2,inc3, inc4],2),)
-# inclusions=(Intersection(inc1,inc2,2),)
+rve = RVE( [1.0, 1.0, 1.0], [0,0,0], [0.0, 0.0, 0.0], 0.1)
+dx=0.05
+a=[0.0,0.0,0.0]+[-dx,-dx,-dx]
+b=[1.0,1.0,1.0]+[dx,dx,dx]
+d=sqrt(sum((b-a).^2))
+geo1=Cylinder(a,2*(b-a)/d, 0.05, 2)
+a=[0.0,1.0,0.0]+[-dx,dx,-dx]
+b=[1.0,0.0,1.0]+[dx,-dx,dx]
+d=sqrt(sum((b-a).^2))
+geo2=Cylinder(a,2*(b-a)/d, 0.05, 2)
+ a=[1.0,0.0,0.0]+[dx,-dx,-dx]
+b=[0.0,1.0,1.0]+[-dx,dx,dx]
+d=sqrt(sum((b-a).^2))
+geo3=Cylinder(a,2*(b-a)/d, 0.05, 2)
+a=[1.0,1.0,0.0]+[dx,dx,-dx]
+b=[0.0,0.0,1.0]+[-dx,-dx,dx]
+d=sqrt(sum((b-a).^2))
+geo4=Cylinder(a,2*(b-a)/d, 0.05, 2)
+geo5=Sphere([0.5, 0.5, 0.5], 0.2, 2)
 
-geo1=Cylinder([-0.1, 0.5, 0.5],[2.0,0.0,0.0], 0.1, 2)
-geo2=Cylinder([0.5, -0.1, 0.5],[0.0,2.0,0.0], 0.1, 2)
-geo3=Cylinder([0.5, 0.5,-0.1],[0.0,0.0,2.0], 0.1, 2)
-geo4=Union([geo1,geo2,geo3],2)
+geo6=Sphere([0.0, 0.0, 0.0], 0.2, 2)
+geo7=Sphere([1.0, 0.0, 0.0], 0.2, 2)
+geo8=Sphere([1.0, 1.0, 0.0], 0.2, 2)
+geo9=Sphere([0.0,1.0,0.0], 0.2, 2)
 
-geo5=Sphere([0.5, 0.5, 0.5], 0.25, 2)
-L=0.38
-geo6=Box([L, L, L], [0.5-L/2, 0.5-L/2, 0.5-L/2], 2)
+geo10=Sphere([0.0, 0.0, 1.0], 0.2, 2)
+geo11=Sphere([1.0, 0.0, 1.0], 0.2, 2)
+geo12=Sphere([1.0, 1.0, 1.0], 0.2, 2)
+geo13=Sphere([0.0,1.0,1.0], 0.2, 2)
 
-geo7=Intersection(geo5,geo6,2)
-geo8=Cut(geo7,geo4,2)
+geo14=Fuse([geo1, geo2, geo3, geo4, geo5, geo6,geo7,geo8,geo9, geo10,geo11,geo12,geo13],2)
 
-inclusions=(geo8,)
-
-
+inclusions=(geo14,)
 
   
 
@@ -43,7 +53,12 @@ inclusions=(geo8,)
     push!(_tags, [(3, 1)])
 
     _numinc = zeros(Int32, numinc)
- 
+
+    # tag = _addInclusion!(gmsh.model, inclusions[1])
+
+    # gmsh.model.occ.synchronize()
+    # visualizeMesh()
+
  
     for i in 1:numinc
         tag = _addInclusion!(gmsh.model, inclusions[i])
