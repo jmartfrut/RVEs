@@ -21,13 +21,13 @@ end
   startGmsh()
   ShowInfo(0)
   myRVE = RVE( [1.0, 1.0, 1.0], [1,1,1], [0.0, 0.0, 0.0], 0.1)
-  myInclusions = (Sphere([0.5, 0.5, 0.5], 0.2, 2),)
+  myInclusions = Sphere([0.5, 0.5, 0.5], 0.2, 2)
   model, tagvol=createGmshModel(myRVE,myInclusions,"Test2")
   createMesh!(model,myRVE,myInclusions,tagvol)
   _, nodeCoords, _ = model.mesh.getNodes()
   @test div(length(nodeCoords),3)==1835
   @test nodeCoords[2475]==0.26005762047093306
-  output_file = joinpath(dirname(@__FILE__), "Test2.msh")
+  output_file = joinpath(dirname(@__FILE__), "Test22.msh")
   saveMesh(output_file)
   stopGmsh()
 end

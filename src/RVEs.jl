@@ -341,6 +341,11 @@ function _findMatrixVolume(out_::Vector{Vector{Tuple{Int32, Int32}}})
 end
 
 
+function createGmshModel(rve::RVE, inclusion::Inclusion ,name::String)
+    return createGmshModel(rve, (inclusion, ), name)
+end
+
+
 function createGmshModel(rve::RVE, inclusions::Tuple, name::String)
 
     gmsh.model.add(name)
@@ -395,6 +400,10 @@ function createGmshModel(rve::RVE, inclusions::Tuple, name::String)
      _addPhysicalGroups!(gmsh.model, out_, rve)
 
     return gmsh.model, out_
+end
+
+function createMesh!(model::Module, rve::RVE, inclusion::Inclusion, out_::Vector{Any})
+    return createMesh!(model, rve, (inclusion,), out_)
 end
 
 function createMesh!(model::Module, rve::RVE, inclusions::Tuple, out_::Vector{Any})
