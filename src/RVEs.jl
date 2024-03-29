@@ -27,96 +27,9 @@ struct RVE
     meshsize::Float64
 end
 
-struct Box <: Inclusion
-    size::Vector{Float64}    # size of the RVE
-    origin::Vector{Float64}     # set cell origin to [0,0,0]
-    refinementwidth::Int32
-end
-
-struct Sphere <: Inclusion
-    origin::Vector{Float64} # center of the sphere
-    radius::Float64 # radius of the sphere
-    refinementwidth::Int32
-end
-
-struct Cylinder <: Inclusion
-    origin::Vector{Float64} # center of the sphere
-    axis::Vector{Float64}  # axis of cilinder
-    radius::Float64 #radius of cylinder
-    refinementwidth::Int32
-end
-
-struct Ellipsoid <: Inclusion
-    origin::Vector{Float64} # center of the sphere
-    radius::Vector{Float64} # radius of the sphere
-    θ::Vector{Float64} # [θxz, θxy]
-    refinementwidth::Int32
-end
-
-
-struct Fuse <: Inclusion
-    inclusions::Vector{Inclusion}
-    refinementwidth::Int32
-end
-
-struct Cut <: Inclusion
-    object::Inclusion
-    tool::Inclusion
-    refinementwidth::Int32
-end
-
-struct Intersect <: Inclusion
-    object::Inclusion
-    tool::Inclusion
-    refinementwidth::Int32
-end
-
-
-function _addInclusion!(model::Module, inc::Fuse)
-    tag1_= _addInclusion!(model, inc.inclusions[1])
-    for i in inc.inclusions[2:end]
-    tag2_= _addInclusion!(model, i)
-    model.occ.fuse((3, tag1_), (3, tag2_), -1)
-    end
-    return tag1_
-end
-
-function _addInclusion!(model::Module, inc::Cut)
-    tag1_= _addInclusion!(model, inc.object)
-    tag2_= _addInclusion!(model, inc.tool)
-    model.occ.cut((3, tag1_), (3, tag2_), -1)
-    return tag1_
-end
-
-function _addInclusion!(model::Module, inc::Intersect)
-    tag1_= _addInclusion!(model, inc.object)
-    tag2_= _addInclusion!(model, inc.tool)
-    model.occ.intersect((3, tag1_), (3, tag2_), -1)
-    return tag1_
-end
-
-function _addInclusion!(model::Module, inc::Box)
-    tag =  model.occ.addBox(inc.origin[1], inc.origin[2], inc.origin[3], inc.size[1], inc.size[2], inc.size[3], -1)
-return tag
-end
-
-function _addInclusion!(model::Module, inc::Sphere)
-         tag = model.occ.addSphere(inc.origin[1], inc.origin[2], inc.origin[3], inc.radius, -1)
-    return tag
-end
-
-function _addInclusion!(model::Module, inc::Cylinder)
-        tag = model.occ.addCylinder(inc.origin[1], inc.origin[2], inc.origin[3], inc.axis[1], inc.axis[2], inc.axis[3], inc.radius, -1)
-    return tag
-end
-
-function _addInclusion!(model::Module, inc::Ellipsoid)
-        tag = model.occ.addSphere(inc.origin[1], inc.origin[2], inc.origin[3], 1, -1)
-        model.occ.dilate((3,tag), inc.origin[1], inc.origin[2], inc.origin[3], inc.radius[1], inc.radius[2], inc.radius[3] )
-        model.occ.rotate((3,tag),inc.origin[1], inc.origin[2], inc.origin[3],0, 1, 0,inc.θ[1])
-        model.occ.rotate((3,tag),inc.origin[1], inc.origin[2], inc.origin[3],0, 0, 1,inc.θ[2])
-    return tag
-end
+include("Inclusions.jl")
+include("Periodicity.jl")
+include("Utils.jl")
 
 
 function _addBoundingBox!(model::Module, rve::RVE)
@@ -156,44 +69,7 @@ function _isinboundary(rve::RVE, b::NTuple{6,Float64})
     return out, location
 end
 
-function _addPeriodicInclusions!(model::Module, rve::RVE, _tags::Vector{Tuple{Int32,Int32}}, location::Vector{Int64})
-
-
-    if rve.periodicityFlags[1] == 1 && (location[1] == 1 || location[4] == 1) && !(location[1]==1 && location[4]==1)
-        newtags_x = model.occ.copy(_tags)
-
-        if location[1] == 1
-            gmsh.model.occ.translate(newtags_x, rve.size[1], 0.0, 0.0)
-        elseif location[4] == 1
-            gmsh.model.occ.translate(newtags_x, -rve.size[1], 0.0, 0.0)
-        end
-        _tags = vcat(_tags, newtags_x)
-    end
-
-    if rve.periodicityFlags[2] == 1 && (location[2] == 1 || location[5] == 1)&& !(location[2]==1 && location[5]==1)
-        newtags_y = model.occ.copy(_tags)
-
-        if location[2] == 1
-            gmsh.model.occ.translate(newtags_y, 0.0, rve.size[2], 0.0)
-        elseif location[5] == 1
-            gmsh.model.occ.translate(newtags_y, 0.0, -rve.size[2], 0.0)
-        end
-        _tags = vcat(_tags, newtags_y)
-    end
-
-    if rve.periodicityFlags[3] == 1 && (location[3] == 1 || location[6] == 1)&& !(location[3]==1 && location[6]==1)
-        newtags_z = model.occ.copy(_tags)
-
-        if location[3] == 1
-            gmsh.model.occ.translate(newtags_z, 0.0, 0.0, rve.size[3])
-        elseif location[6] == 1
-            gmsh.model.occ.translate(newtags_z, 0.0, 0.0, -rve.size[3])
-        end
-        _tags = vcat(_tags, newtags_z)
-    end
-    return _tags
-end
-
+ 
 
 function _getBoundingBox(rve::RVE)
     xmin = rve.origin[1]
@@ -204,47 +80,7 @@ function _getBoundingBox(rve::RVE)
     zmax = rve.origin[3] + rve.size[3]
     return [xmin, ymin, zmin, xmax, ymax, zmax]
 end
-
-function _getlc(inc::Sphere)
-    return inc.radius
-end
-
-function _getlc(inc::Cylinder)
-    return inc.radius
-end
-
-function _getlc(inc::Ellipsoid)
-    return minimum(inc.radius)
-end
-
-function _getlc(inc::Box)
-    return minimum(inc.size)
-end
-
-
-
-function _getlc(inc::Fuse)
-    radius  = zeros(Float64, length(inc.inclusions))
-    for i in 1:length(inc.inclusions)
-        radius[i] = _getlc(inc.inclusions[i])
-    end
-    return minimum(radius)
-end
-
-function _getlc(inc::Cut)
-        radius1 = _getlc(inc.object)
-        radius2 = _getlc(inc.tool)
-    return minimum([radius1, radius2])
-end
-
-
-function _getlc(inc::Intersect)
-    radius1 = _getlc(inc.object)
-    radius2 = _getlc(inc.tool)
-return minimum([radius1, radius2])
-end
-
-
+ 
 
 function _addPhysicalGroups!(model::Module, out_::Vector{Any}, rve::RVE)
     xmin, ymin, zmin, xmax, ymax, zmax = _getBoundingBox(rve)
@@ -554,29 +390,6 @@ function createMesh!(model::Module, rve::RVE, inclusions::Tuple, out_::Vector{An
  
     return model
 end
-
-function visualizeMesh()
-    # Launch the GUI to see the results:
-    if !("-nopopup" in ARGS)
-        gmsh.fltk.run()
-    end
-
-end
-
-function stopGmsh()
-    Gmsh.finalize()
-end
-
-function startGmsh()
-    gmsh.initialize()
-end
-
-function ShowInfo(a::Int64)
-    gmsh.option.setNumber("General.Terminal",a)
-end
-
-function saveMesh(output_file::String)
-    gmsh.write(output_file)
-end
+ 
 
 end
