@@ -1,6 +1,7 @@
 """
 Set of Inclusions
 """
+abstract type Inclusion end
 
 struct Box <: Inclusion
     size::Vector{Float64}    # size of the RVE

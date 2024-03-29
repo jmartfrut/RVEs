@@ -18,7 +18,6 @@ export createMesh!
 export saveMesh
 export ShowInfo
 
-abstract type Inclusion end
 
 struct RVE
     size::Vector{Float64}    # size of the RVE
@@ -26,6 +25,7 @@ struct RVE
     origin::Vector{Float64}     # set cell origin to [0,0,0]
     meshsize::Float64
 end
+ 
 
 include("Inclusions.jl")
 include("Periodicity.jl")
@@ -69,7 +69,6 @@ function _isinboundary(rve::RVE, b::NTuple{6,Float64})
     return out, location
 end
 
- 
 
 function _getBoundingBox(rve::RVE)
     xmin = rve.origin[1]
