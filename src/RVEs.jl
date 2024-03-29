@@ -194,7 +194,7 @@ function createGmshModel(rve::RVE, inclusions::Tuple, name::String)
 
     _numinc = zeros(Int32, numinc)
     for i in 1:numinc
-        tag = _addInclusion!(gmsh.model, inclusions[i])
+        tag = inclusions[i](gmsh.model)
         inc_boundingbox = gmsh.model.occ.getBoundingBox(dim3, tag)
         isinboundary, boundarytype = _isinboundary(rve, inc_boundingbox)
         if isinboundary

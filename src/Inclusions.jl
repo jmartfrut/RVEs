@@ -45,47 +45,45 @@ end
 
 
 
-
-
-function _addInclusion!(model::Module, inc::Fuse)
-    tag1_= _addInclusion!(model, inc.inclusions[1])
+function (inc::Fuse)(model::Module)
+    tag1_= inc.inclusions[1](model)
     for i in inc.inclusions[2:end]
-    tag2_= _addInclusion!(model, i)
+    tag2_= i(model)
     model.occ.fuse((3, tag1_), (3, tag2_), -1)
     end
     return tag1_
 end
 
-function _addInclusion!(model::Module, inc::Cut)
-    tag1_= _addInclusion!(model, inc.object)
-    tag2_= _addInclusion!(model, inc.tool)
+function (inc::Cut)(model::Module)
+    tag1_= inc.object(model)
+    tag2_= inc.tool(model)
     model.occ.cut((3, tag1_), (3, tag2_), -1)
     return tag1_
 end
 
-function _addInclusion!(model::Module, inc::Intersect)
-    tag1_= _addInclusion!(model, inc.object)
-    tag2_= _addInclusion!(model, inc.tool)
+function (inc::Intersect)(model::Module)
+    tag1_= inc.object(model)
+    tag2_= inc.tool(model)
     model.occ.intersect((3, tag1_), (3, tag2_), -1)
     return tag1_
 end
 
-function _addInclusion!(model::Module, inc::Box)
+function (inc::Box)(model::Module)
     tag =  model.occ.addBox(inc.origin[1], inc.origin[2], inc.origin[3], inc.size[1], inc.size[2], inc.size[3], -1)
 return tag
 end
 
-function _addInclusion!(model::Module, inc::Sphere)
+function (inc::Sphere)(model::Module)
          tag = model.occ.addSphere(inc.origin[1], inc.origin[2], inc.origin[3], inc.radius, -1)
     return tag
 end
 
-function _addInclusion!(model::Module, inc::Cylinder)
+function (inc::Cylinder)(model::Module)
         tag = model.occ.addCylinder(inc.origin[1], inc.origin[2], inc.origin[3], inc.axis[1], inc.axis[2], inc.axis[3], inc.radius, -1)
     return tag
 end
 
-function _addInclusion!(model::Module, inc::Ellipsoid)
+function (inc::Ellipsoid)(model::Module)
         tag = model.occ.addSphere(inc.origin[1], inc.origin[2], inc.origin[3], 1, -1)
         model.occ.dilate((3,tag), inc.origin[1], inc.origin[2], inc.origin[3], inc.radius[1], inc.radius[2], inc.radius[3] )
         model.occ.rotate((3,tag),inc.origin[1], inc.origin[2], inc.origin[3],0, 1, 0,inc.θ[1])
@@ -93,6 +91,8 @@ function _addInclusion!(model::Module, inc::Ellipsoid)
     return tag
 end
 
+
+ 
 
 
 function _getlc(inc::Sphere)
