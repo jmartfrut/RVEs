@@ -32,25 +32,48 @@ end
 
 struct Fuse <: Inclusion
     inclusions::Vector{Inclusion}
-    refinementwidth::Int32
 end
 
 struct Cut <: Inclusion
     object::Inclusion
     tool::Inclusion
-    refinementwidth::Int32
 end
 
 struct Intersect <: Inclusion
     object::Inclusion
     tool::Inclusion
-    refinementwidth::Int32
 end
 
+struct Translate <: Inclusion
+    inclusions::Inclusion
+    dx::Float64
+    dy::Float64
+    dz::Float64
+end
+
+
+struct Rotate <: Inclusion
+    inclusions::Inclusion
+    origin::Vector{Float64}
+    direction::Vector{Float64}
+    ϕ::Float64
+end
 
 """
 Add inclusion to gmsh model
 """
+function (inc::Translate)(model::Module)
+    tag1_ = inc.inclusions(model)
+    model.occ.translate((3, tag1_), inc.dx, inc.dy, inc.dz)
+    return tag1_
+end
+
+function (inc::Rotate)(model::Module)
+    tag1_ = inc.inclusions(model)
+    model.occ.rotate((3, tag1_), inc.origin[1], inc.origin[2], inc.origin[3], inc.direction[1], inc.direction[2], inc.direction[3], inc.ϕ)
+    return tag1_
+end
+
 function (inc::Fuse)(model::Module)
     tag1_ = inc.inclusions[1](model)
     for i in inc.inclusions[2:end]
@@ -139,3 +162,59 @@ function _getlc(inc::Intersect)
     return minimum([radius1, radius2])
 end
 
+function _getlc(inc_::Translate)
+    return _getlc(inc_.inclusions)
+end
+
+function _getlc(inc_::Rotate)
+    return _getlc(inc_.inclusions)
+end
+
+"""
+Get refinement level
+"""
+
+
+function _getreflevel(inc::Sphere)
+    return inc.refinementwidth
+end
+
+function _getreflevel(inc::Cylinder)
+    return inc.refinementwidth
+end
+
+function _getreflevel(inc::Ellipsoid)
+    return inc.refinementwidth
+end
+
+function _getreflevel(inc::Box)
+    return inc.refinementwidth
+end
+
+function _getreflevel(inc::Fuse)
+    ref = zeros(Float64, length(inc.inclusions))
+    for i in 1:length(inc.inclusions)
+        ref[i] = _getreflevel(inc.inclusions[i])
+    end
+    return maximum(ref)
+end
+
+function _getreflevel(inc::Cut)
+    ref1 = _getreflevel(inc.object)
+    ref2 = _getreflevel(inc.tool)
+    return minimum([ref1, ref2])
+end
+
+function _getreflevel(inc::Intersect)
+    ref1 = _getreflevel(inc.object)
+    ref2 = _getreflevel(inc.tool)
+    return minimum([ref1, ref2])
+end
+
+function _getreflevel(inc_::Translate)
+    return _getreflevel(inc_.inclusions)
+end
+
+function _getreflevel(inc_::Rotate)
+    return _getreflevel(inc_.inclusions)
+end
